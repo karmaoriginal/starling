@@ -92,17 +92,5 @@ jobs:
       - name: Test Rust core and voxel kernel correctness
         if: steps.rust.outputs.required != 'false'
         run: |
-          set -o pipefail
-          cargo +stable test --workspace --lib --bins --tests 2>&1 | tee test.log
-          cargo +stable test --workspace --doc 2>&1 | tee -a test.log
-      # TEMPORARY diagnostic, removed in this same pull request: the runner's log host is not
-      # reachable from where this branch is written, so name the failing tests in an annotation.
-      - name: Report the failing tests
-        if: failure()
-        run: |
-          grep -E 'FAILED|panicked at|^failures:|^test result:' test.log | head -60 > fails.txt || true
-          python3 - <<'PY'
-          text = open("fails.txt").read()[:4000] or "no matching lines in test.log"
-          escaped = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print("::error title=failing tests::" + escaped)
-          PY
+          cargo +stable test --workspace --lib --bins --tests
+          cargo +stable test --workspace --doc
