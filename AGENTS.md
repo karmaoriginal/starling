@@ -87,7 +87,7 @@ reads `README.md`, `launcher/links.json`, `docs/api/`, `roadmap/roadmap.json` an
 ```sh
 python3 tools/pr_ready.py                  # the self-check: fmt, clippy -D warnings, touched crates' tests, harnesses; paste its block in the PR
 python3 tools/pr_ready.py --quick          # same without harnesses
-cargo test -p horizon-client -p horizon-client-lib --lib --bins --tests   # skips the 104 examples (pr_ready does this); `--doc` separately
+cargo test -p horizon-client -p horizon-client-lib --lib --bins --tests   # skips the examples (pr_ready does this); `--doc` separately
 cargo test -p horizon-client-lib --lib mod_content::tests:: -- --ignored   # the 5 slow content-root tests, #[ignore]d; pr_ready runs them when mod content, assets, blocks or items change
 cargo build --profile fast -p horizon-client        # optimized, quick to link: use it to play or run lan_e2e
 python3 tools/parity.py --changed origin/main       # the harnesses your branch can affect (CI's parity job)
@@ -100,8 +100,10 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 - Harnesses and the game need the vanilla data in `.local/` (`minecraft/`, `horizon-client/26.3`, `datagen/`,
   `tools/`): see [docs/parity-workflow.md](docs/parity-workflow.md). Without it, pr_ready lists the
   harnesses for CI.
-- A harness = `tools/test_<name>_parity.py` (324 of them) + a Java oracle (`mods/horizon/src/test/java/dev/horizonlab/parity/Vanilla*Oracle.java`)
-  + a Rust probe: `crates/<crate>/examples/<name>_{probe,fixture}.rs` (horizon-world 175, horizon-client 104),
+- A harness = `tools/test_<name>_parity.py` (382 of them, `ls tools/test_*_parity.py | wc -l`) + a Java oracle
+  (`mods/horizon/src/test/java/dev/horizonlab/parity/Vanilla*Oracle.java`)
+  + a Rust probe: `crates/<crate>/examples/<name>_{probe,fixture}.rs` (horizon-world 183, horizon-client 116 `.rs`
+  files under each crate's `examples/`; `find crates/<crate>/examples -name '*.rs' | wc -l`),
   or the game binary with a fixture env var (`game/dispense_fixture.rs`, `game/sculk_fixture.rs`,
   `game/command_harness.rs`, `game/net_harness.rs`). Copy a nearby harness for a new one.
 - Developing a native mod? Run `horizon-launcher settings native-profile dev` once. `dev` builds the game crate

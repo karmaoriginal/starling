@@ -42,7 +42,12 @@ LABEL = "Starling"
 # CI builds, signed with that repository's test key: the release key stays out of it.
 DEV_SUFFIX = ".dev"
 VARIANTS = {"dev": (DEV_SUFFIX, " Dev"), "preview": (".preview", " Preview")}
+# The version a build here carries unless --version says another: a release build takes the tag's
+# (android.yml passes it), so the tag and the APK's versionName cannot drift. The game reads the
+# versionName back (android.rs `app_version`) to decide whether GitHub has a newer Starling.
 VERSION_NAME = "0.8.0"
+# Bump with every release: Android installs an update only over a lower versionCode, and a build with
+# an equal one refuses to replace the installed app.
 VERSION_CODE = 13
 MIN_SDK = 26  # AAudio (cpal)
 TARGET_SDK = 35
@@ -292,6 +297,20 @@ def sign(build_tools, aligned, apk, out):
     run(apksigner, "verify", apk)
 
 
+def apply_version(version):
+    """Make `version` the APK's versionName, with or without its `v`: a release built from a tag
+    carries the tag's version, so the tag, the APK's name and `app_version` all agree."""
+    global VERSION_NAME
+    VERSION_NAME = version.strip().removeprefix("v")
+    return VERSION_NAME
+
+
+def apk_name(version, abi, variant=None):
+    """The APK's file name: `starling[-variant]-<version>-<abi>.apk`. release_assets.py looks a
+    release's APKs up by this name, so both sides of that come from here."""
+    return f"starling{'-' + variant if variant else ''}-{version}-{abi}.apk"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
@@ -319,7 +338,14 @@ def main():
         help=f"Starling Preview ({APPLICATION_ID}{VARIANTS['preview'][0]}), the organisation's CI build",
     )
     parser.add_argument("--abi", choices=TARGETS, default=ABI, help="Android ABI (default: arm64-v8a)")
+    parser.add_argument(
+        "--version", metavar="VERSION",
+        help=f"the APK's versionName and the version in its name (default: {VERSION_NAME}); a release build "
+        "takes the tag's, so the tag and the APK agree",
+    )
     args = parser.parse_args()
+    if args.version:
+        apply_version(args.version)
     triple, _, _ = TARGETS[args.abi]
 
     sdk = sdk_dir()
@@ -355,7 +381,7 @@ def main():
     add_code(out / "base.apk", libraries, dex, out / "unsigned.apk", args.abi)
     aligned = out / "aligned.apk"
     run(tool(build_tools, "zipalign"), "-P", "16", "-f", "4", out / "unsigned.apk", aligned)
-    apk = out / f"starling{'-' + variant if variant else ''}-{VERSION_NAME}-{args.abi}.apk"
+    apk = out / apk_name(VERSION_NAME, args.abi, variant)
     sign(build_tools, aligned, apk, out)
     print(apk)
     if args.zip:
