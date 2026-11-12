@@ -85,7 +85,7 @@ jobs:
           cargo +stable clippy --workspace --all-targets -- -D warnings
           # The server build: the game without sound or controllers.
           cargo +stable clippy -p horizon-client --all-targets --no-default-features -- -D warnings
-      # Libraries, binaries and integration tests, then doc tests: not the ~275 examples, which clippy above already
+      # Libraries, binaries and integration tests, then doc tests: not the examples, which clippy above already
       # type-checks and Horizon's parity jobs build and run (they were most of this step's build and link time).
       # cargo test, not nextest: nextest's process per test reloads each binary's shared tables for every test, and on
       # these 4-core runners it was no faster (#4978).

@@ -1644,6 +1644,14 @@ fn backends_name(backends: wgpu::Backends) -> &'static str {
 fn is_software(kind: wgpu::DeviceType) -> bool {
     kind == wgpu::DeviceType::Cpu
 }
+/// Whether `Auto` leaves this adapter to OpenGL ES instead: PowerVR's Vulkan driver on Android
+/// (Rogue, the GE8320 of phones such as the Honor X5 Plus) needs the renderer's flat-draw
+/// workaround for terrain (`flat::is_powervr_vulkan`), and Imagination's OpenGL ES driver is the
+/// one its own tools target, so Auto takes OpenGL ES first there. A player who chose Vulkan keeps
+/// Vulkan; every other GPU, and every other platform, is untouched.
+fn powervr_prefers_gles(api: GraphicsApi, os: &str, info: &wgpu::AdapterInfo) -> bool {
+    api == GraphicsApi::Auto && os == "android" && flat::is_powervr_vulkan(info)
+}
 /// A device and what it came from.
 struct Opened {
     instance: wgpu::Instance,
@@ -1724,9 +1732,10 @@ async fn open_device(
     layers: u32,
 ) -> Result<Opened> {
     let wgpu_backend = std::env::var_os("WGPU_BACKEND").is_some();
+    let api = api.with_env();
     let mut first = None;
-    for (order, allow_cpu) in device_search(api.with_env(), std::env::consts::OS, wgpu_backend) {
-        match open_device_with(window, offscreen, &order, layers, allow_cpu).await {
+    for (order, allow_cpu) in device_search(api, std::env::consts::OS, wgpu_backend) {
+        match open_device_with(window, offscreen, &order, layers, allow_cpu, api).await {
             Ok(opened) => {
                 if let Some(first) = &first {
                     log::warn!(
@@ -1780,6 +1789,7 @@ async fn open_device_with(
     order: &[wgpu::Backends],
     layers: u32,
     allow_cpu: bool,
+    api: GraphicsApi,
 ) -> Result<Opened> {
     let mut failures = Vec::new();
     for (attempt, backends) in order.iter().copied().enumerate() {
@@ -1787,7 +1797,7 @@ async fn open_device_with(
         if attempt > 0 {
             log::warn!("Horizon renderer: trying {name} ({})", failures.join("; "));
         }
-        match open_with_retry(backends, window, offscreen, layers, allow_cpu).await {
+        match open_with_retry(backends, window, offscreen, layers, allow_cpu, api).await {
             Ok(opened) => return Ok(opened),
             Err(e) => failures.push(e),
         }
@@ -1812,15 +1822,16 @@ async fn open_with_retry(
     offscreen: bool,
     layers: u32,
     allow_cpu: bool,
+    api: GraphicsApi,
 ) -> std::result::Result<Opened, String> {
-    match open_backend(backends, window, offscreen, false, layers, allow_cpu).await {
+    match open_backend(backends, window, offscreen, false, layers, allow_cpu, api).await {
         Err(NoDevice::NoAdapter(hidden)) => {
             log::warn!(
                 "Horizon renderer: {} has no conformant adapter ({hidden}); asking again for the \
                  ones wgpu hides as non-conformant",
                 backends_name(backends)
             );
-            match open_backend(backends, window, offscreen, true, layers, allow_cpu).await {
+            match open_backend(backends, window, offscreen, true, layers, allow_cpu, api).await {
                 Ok(opened) => {
                     log::warn!(
                         "Horizon renderer: using {} although its driver reports no Vulkan \
@@ -1846,6 +1857,7 @@ async fn open_backend(
     allow_nonconformant: bool,
     layers: u32,
     allow_cpu: bool,
+    api: GraphicsApi,
 ) -> std::result::Result<Opened, NoDevice> {
     let name = backends_name(backends);
     let instance = wgpu::Instance::new(instance_descriptor(
@@ -1880,6 +1892,18 @@ async fn open_backend(
         return Err(NoDevice::NoAdapter(format!(
             "{name}: only a software adapter ({})",
             adapter.get_info().name
+        )));
+    }
+    // PowerVR Rogue's Vulkan driver on Android (the GE8320 of phones such as the Honor X5 Plus)
+    // draws terrain only through the renderer's flat-draw workaround, and Imagination's OpenGL ES
+    // driver is the one its own tools target: on Auto, leave it to OpenGL ES, which
+    // `open_device_with` tries next. Failed, not NoAdapter, so `open_with_retry` does not ask
+    // again for the adapters wgpu hides: a second Vulkan try would answer the same.
+    let powervr = adapter.get_info();
+    if powervr_prefers_gles(api, std::env::consts::OS, &powervr) {
+        return Err(NoDevice::Failed(format!(
+            "{name}: {} is better through OpenGL ES on this phone",
+            powervr.name
         )));
     }
     describe_adapter(&adapter);
@@ -10581,6 +10605,31 @@ mod tests {
             assert_eq!(backend_order(api, "windows", true), [Backends::default()]);
             assert_eq!(order(api, "macos"), [Backends::default()]);
         }
+    }
+    /// Auto on a PowerVR phone (the GE8320 of the Honor X5 Plus) takes OpenGL ES, the driver
+    /// Imagination targets, over a Vulkan driver the renderer has to draw around.
+    #[test]
+    fn auto_leaves_a_powervr_vulkan_gpu_on_android_to_opengl_es() {
+        use super::{GraphicsApi, powervr_prefers_gles};
+        let mut powervr = adapter(wgpu::DeviceType::IntegratedGpu);
+        powervr.vendor = 0x1010; // Imagination Technology
+        powervr.name = "PowerVR Rogue GE8320".into();
+        let mut adreno = adapter(wgpu::DeviceType::IntegratedGpu);
+        adreno.name = "Adreno (TM) 710".into();
+        assert!(powervr_prefers_gles(GraphicsApi::Auto, "android", &powervr));
+        // Another GPU, another platform, or a player who chose the API, keeps Vulkan.
+        assert!(!powervr_prefers_gles(GraphicsApi::Auto, "android", &adreno));
+        assert!(!powervr_prefers_gles(GraphicsApi::Auto, "linux", &powervr));
+        assert!(!powervr_prefers_gles(
+            GraphicsApi::Vulkan,
+            "android",
+            &powervr
+        ));
+        assert!(!powervr_prefers_gles(
+            GraphicsApi::OpenGl,
+            "android",
+            &powervr
+        ));
     }
     #[test]
     fn a_chosen_api_without_a_gpu_tries_the_others_before_software() {

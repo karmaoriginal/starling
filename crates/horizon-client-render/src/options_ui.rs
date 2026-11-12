@@ -3680,6 +3680,10 @@ impl OptionsUi {
                         Opt::InactivityFps,
                         Opt::GuiScale,
                         Opt::Gamma,
+                        // A phone can use every API it has a driver for, and on the GPUs whose
+                        // Vulkan the renderer draws around (PowerVR) the choice is the escape
+                        // hatch from the one Auto takes (gfx.rs `powervr_prefers_gles`).
+                        Opt::GraphicsBackend,
                     ]
                 } else {
                     rows.push(Row::Big(Opt::ExclusiveMode));

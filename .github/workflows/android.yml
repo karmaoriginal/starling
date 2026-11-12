@@ -115,11 +115,17 @@ jobs:
           MODS: ${{ inputs.native_mods }}
           PROFILE: ${{ env.RELEASE_BUILD == 'true' && 'fast' || 'quick' }}
           VARIANT: ${{ env.PREVIEW == 'true' && '--preview' || '' }}
+          # A tag decides the APK's versionName, so the release's title and the APK it installs cannot
+          # drift apart (build_apk.py --version; release_assets.py looks the APKs up by that name); a
+          # branch or pull request build keeps the version in the tree.
+          TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
         # Releases with the fast profile (fewer codegen units: a little quicker in game). With native mods, the APK
         # native_build.sh makes, named after them.
         run: |
+          version=""
+          if [ -n "$TAG" ]; then version="--version ${TAG#v}"; fi
           if [ -z "$MODS" ]; then
-            python packaging/android/build_apk.py --abi "$ABI" --profile "$PROFILE" $VARIANT ${{ inputs.keep_symbols && '--keep-symbols' || '' }}
+            python packaging/android/build_apk.py --abi "$ABI" --profile "$PROFILE" $VARIANT $version ${{ inputs.keep_symbols && '--keep-symbols' || '' }}
             exit 0
           fi
           bundles=()

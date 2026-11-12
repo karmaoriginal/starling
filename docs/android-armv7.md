@@ -53,6 +53,15 @@ Vulkan is optional in the additional-ABI manifests so a GLES-only device can att
 start; this does not guarantee support for every GLES driver. Actual API,
 texture-array and shader limits remain authoritative.
 
+**Which API Auto takes.** Graphics API on Auto (the default) tries Vulkan first
+and then OpenGL ES, except on a PowerVR GPU: there Auto takes OpenGL ES.
+Imagination's Vulkan driver is the one the renderer has to draw around
+(`is_powervr_vulkan` in `gfx/flat.rs`: Rogue's, the GE8320 of phones such as the
+Honor X5 Plus, draws terrain in pieces without an error), and its OpenGL ES
+driver is the one Imagination's own tools target. Android's video settings show
+the Graphics API row, so Vulkan can be chosen back; it applies at the next
+start, and `HORIZON_GRAPHICS_API=vulkan` does the same from the environment.
+
 Existing terrain texture-array splitting follows the adapter's layer limit,
 with at most eight arrays. A pack that needs more layers than those arrays hold
 is rejected rather than silently losing textures.

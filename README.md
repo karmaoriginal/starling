@@ -34,6 +34,36 @@
 
 Development happens in [starling-client/starling](https://github.com/starling-client/starling), on the `starling` branch, where Starling and Horizon Android are now one app. Builds of every push there are **Starling Preview**, in [GitHub Actions](https://github.com/starling-client/starling/actions/workflows/android.yml) (the `starling-apk-<abi>` artifact of a run; GitHub asks you to sign in to download it): an app of its own, installed beside the release, with its own `StarlingPreview` folder and sign-in. You can also [build it from source](#build-from-source).
 
+## What is new since v0.8.0
+
+What this branch adds to the release above; none of it is in an APK yet.
+
+- **PowerVR phones render through OpenGL ES.** With Graphics API on Auto, a PowerVR GPU (the Rogue
+  GE8320 of the Honor X5 Plus and the other Helio G36/G37 phones) now starts on OpenGL ES instead of
+  Vulkan. Imagination's Vulkan driver is the one the renderer already has to draw around, and its
+  OpenGL ES driver is the one its own tools target. Every other GPU, and every other platform, keeps
+  what it had.
+- **Graphics API is on the phone's video settings.** Android hid the row, so a phone had no way to
+  choose its graphics API at all. It now cycles Auto, OpenGL and Vulkan, and applies at the next
+  start; Vulkan is the way back for a PowerVR phone that prefers it.
+- **The APK's version comes from its tag.** A release build takes the tag's version
+  (`build_apk.py --version`, passed by `android.yml`), so the release and the APK it installs cannot
+  drift apart, and a missing APK names the version the tree calls its own. `VERSION_CODE` is still
+  bumped by hand: Android installs an update only over a lower one.
+- **No release announces shader packs as missing any more.** Every release said they "have been
+  removed for now" long after they came back. `docs/known-issues.md` now says nothing the tree
+  contradicts, and a test fails when a bullet calls a shipped feature missing.
+- **The vendored patches are tracked.** `third_party/UPSTREAM.md` says, for each of the four crates
+  `Cargo.toml` patches from `third_party/`, what it fixes, what would let us drop it and how to check
+  a rebase; `winit` was patched with no third-party notice at all, and has one now.
+- **AGENTS.md's counts are the tree's.** It said 324 harnesses and 175 and 104 probes; the tree has
+  382, 183 and 116, and a test keeps the numbers equal to the globs beside them.
+
+> 🤖 Written by an AI agent in Arena.ai's Agent Mode, not by a person at the keyboard. The Python
+> tests were run here and pass (`python3 -m unittest discover -s tests`). The Rust edits were not
+> compiled: this checkout has no Rust toolchain, so they were read, checked for syntax by a Rust
+> parser, and are waiting on CI's `cargo fmt`, `clippy -D warnings` and Rust tests before they ship.
+
 ## What works today
 
 - **Setting up on the phone:** sign in with your Microsoft account, and the game's files come from Mojang and are prepared on the phone, by a Java runtime fetched just for that and removed after, with every language the game has. While it works, fish in a little pond, or change the settings in a hand-drawn skin made for this screen (the game's own look is part of what is being prepared). Resources prepared on a computer still open too.

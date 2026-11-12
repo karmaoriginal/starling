@@ -3,14 +3,18 @@
 import argparse
 from pathlib import Path
 
-from build_apk import ROOT, TARGETS, zip_folder
+from build_apk import ROOT, TARGETS, VERSION_NAME, apk_name, zip_folder
 
 
 def prepare(folder, version, visuals):
     version = version.removeprefix("v")
-    missing = [abi for abi in TARGETS if not (folder / f"starling-{version}-{abi}.apk").is_file()]
+    missing = [abi for abi in TARGETS if not (folder / apk_name(version, abi)).is_file()]
     if missing:
-        raise ValueError("Missing release APKs: " + ", ".join(missing))
+        raise ValueError(
+            "Missing release APKs: " + ", ".join(apk_name(version, abi) for abi in missing)
+            + f" (this tree's build_apk.py says VERSION_NAME = {VERSION_NAME}, and a release build "
+            "takes its version from the tag)"
+        )
     zip_folder(visuals, folder / "StarlingVisuals.zip")
 
 

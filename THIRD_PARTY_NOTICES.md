@@ -14,6 +14,15 @@ Apache-2.0; both licenses are in that folder (`LICENSE.MIT`, `LICENSE.APACHE`).
 fixes to its GLSL frontend that shader packs need, each applied in the commit that needed it. It is licensed under MIT or Apache-2.0; both licenses
 are in that folder (`LICENSE.MIT`, `LICENSE.APACHE`).
 
+## winit
+
+`third_party/winit` is [winit](https://github.com/rust-windowing/winit) 0.30.13 by the rust-windowing
+developers, with an Android input hook of Starling's own, marked "Horizon's patch" in
+`src/platform/android.rs` and `src/platform_impl/android/mod.rs`: winit's Android backend drops the input
+events it does not turn into touches or mouse events, and the hook gives the app each one first. It is
+licensed under the Apache License 2.0 (`LICENSE` in that folder). See
+[third_party/UPSTREAM.md](third_party/UPSTREAM.md).
+
 ## libmimalloc-sys and mimalloc
 
 `third_party/libmimalloc-sys` is [libmimalloc-sys](https://github.com/purpleprotocol/mimalloc_rust)
