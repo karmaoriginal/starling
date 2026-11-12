@@ -78,6 +78,20 @@ jobs:
         with:
           shared-key: verify
           save-if: ${{ github.ref == 'refs/heads/android' || github.ref == 'refs/heads/starling' }}
+      # TEMPORARY diagnostic, to be removed in this same pull request: the log host is unreachable
+      # from where this branch is written, so report what rustfmt would change as an annotation.
+      - name: Report what rustfmt would change
+        if: steps.rust.outputs.required != 'false'
+        continue-on-error: true
+        run: |
+          cargo +stable fmt --all -- --check > fmt.diff 2>&1 || true
+          files=$(grep '^Diff in' fmt.diff | sort -u | head -30 | tr '\n' ' ')
+          echo "::notice title=rustfmt files::${files:-none}"
+          python3 - <<'PY'
+          text = open("fmt.diff").read()[:4000]
+          escaped = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print("::error title=rustfmt diff::" + escaped)
+          PY
       - name: Check formatting and lint
         if: steps.rust.outputs.required != 'false'
         run: |
