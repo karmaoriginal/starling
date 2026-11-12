@@ -10620,8 +10620,16 @@ mod tests {
         // Another GPU, another platform, or a player who chose the API, keeps Vulkan.
         assert!(!powervr_prefers_gles(GraphicsApi::Auto, "android", &adreno));
         assert!(!powervr_prefers_gles(GraphicsApi::Auto, "linux", &powervr));
-        assert!(!powervr_prefers_gles(GraphicsApi::Vulkan, "android", &powervr));
-        assert!(!powervr_prefers_gles(GraphicsApi::OpenGl, "android", &powervr));
+        assert!(!powervr_prefers_gles(
+            GraphicsApi::Vulkan,
+            "android",
+            &powervr
+        ));
+        assert!(!powervr_prefers_gles(
+            GraphicsApi::OpenGl,
+            "android",
+            &powervr
+        ));
     }
     #[test]
     fn a_chosen_api_without_a_gpu_tries_the_others_before_software() {
